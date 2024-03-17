@@ -6,11 +6,20 @@ import pyttsx3
 import datetime
 import subprocess
 import pyperclip
+import json
+
+fcfg = 'cfg.json'
+with open(fcfg, 'r', encoding='utf-8') as json_file:
+    cfg = json.load(json_file)
 
 com_yt = ['открой ютуб', 'открой youtube', 'включи ютуб', 'включи youtube', 'смотреть ютуб', 'смотреть youtube']
+com_mu = ['музыку', 'музыка', 'музык']
 com_vr = ['время']
 com_cp = ['копировать']
 com_fd = ['поиск', 'найти', 'найди', 'искать', 'запрос', 'интернет']
+
+music_servs = ['https://music.yandex.ru/home', 'https://vk.com/audio', 'https://open.spotify.com/',
+               'https://music.youtube.com/', 'https://music.apple.com/']
 
 
 # функция произношения текста
@@ -19,6 +28,48 @@ def talk(words):
     engine = pyttsx3.init()
     engine.say(words)
     engine.runAndWait()
+
+
+# функция музыки
+def musicopen():
+    r = sr.Recognizer()
+    if cfg['musicID'] == -1:
+        with sr.Microphone() as source:
+            talk('Сначала назовите, где вы слушаете музыку: Яндекс, ВК, Спотифай, Ютуб, Эппл?')
+            r.adjust_for_ambient_noise(source, duration=1)
+            audio = r.listen(source)
+        try:
+            mplatform = r.recognize_google(audio, language="ru-RU").lower()
+            f1 = True
+            if any(x in mplatform for x in ['яндекс', 'yandex']):
+                cfg['musicID'] = 0
+            elif any(x in mplatform for x in ['вк', 'вконтакте', 'vk', 'vkontakte']):
+                cfg['musicID'] = 1
+            elif any(x in mplatform for x in ['спотифай', 'spotify']):
+                cfg['musicID'] = 2
+            elif any(x in mplatform for x in ['ютуб', 'youtube', 'ютьюб']):
+                cfg['musicID'] = 3
+            elif any(x in mplatform for x in ['эплэппл', 'apple']):
+                cfg['musicID'] = 4
+            else:
+                f1 = False
+            with open(fcfg, 'w', encoding='utf-8') as json_file:
+                json.dump(cfg, json_file)
+            if f1:
+                talk(f'платформа установлена на {mplatform}')
+                print(f'платформа установлена на {mplatform}')
+                return musicopen()
+            else:
+                talk('ошибка выбора сервиса')
+                print('ошибка выбора сервиса')
+                return musicopen()
+        except sr.UnknownValueError:
+            talk('ошибка выбора сервиса')
+            return musicopen()
+    else:
+        talk('Запускаю музыку')
+        mplatform = music_servs[cfg['musicID']]
+        return mplatform
 
 
 # функция поиска в браузере
@@ -120,6 +171,10 @@ def make_command(zadanie):
         talk('Уже открываю')
         url = 'https://www.youtube.com/'
         webbrowser.open(url)
+
+    # открыть музыку
+    elif any(x in zadanie for x in com_mu):
+        webbrowser.open(musicopen())
 
     # время
     elif any(x in zadanie for x in com_vr):
